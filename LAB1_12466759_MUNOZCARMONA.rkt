@@ -14,6 +14,7 @@
  (define (make-system name users current-user drives current-drive folders archivos current-path)
    (list name users current-user drives current-drive folders archivos current-path))
 
+
    
 ;; RF3 -  RUN:Permite ejecutar un comando sobre el sistema
  (define (run system cmd)
@@ -131,8 +132,7 @@
    
 ;;RF9.- md: Permite crear un directorio dentro de una unidad a partir del nombre especificado.
 (define (make-md name ubicacion creador date-creacion date-modificacion)   ;; Se construye la carpeta
-  (list name ubicacion creador date-creacion date-modificacion)
-  )
+  (list(list name ubicacion creador date-creacion date-modificacion)))
 
 (define ((md system) namecd)
  (make-system                    
@@ -153,11 +153,83 @@
 
 ;;R11: función que permite añadir un archivo en la ruta actual.
 ;;Type archivo =  tipo x name X extención X contenido X atributos X ubicacion
-(define (make-archivo name extención contenido atributos ubicacion)   
-  (list name extención contenido atributos ubicacion))
+(define (make-archivo name extencion cont ubicacion)   
+  (list(list name extencion cont ubicacion)))
 
-;;(define S32 ((run S31 add-file) (file "foo1.txt" "txt" "hello world 1")))
+;;(define S32 ((run S31 add-file) ("foo1.txt" "txt" "hello world 1")))
+(define  ((add-file system)name extencion cont)
+(make-system                    
+  (get-name-system system)
+  (get-users-system system)
+  (get-current-user-system system)
+  (get-drives-system system)
+  (get-current-drive-system system)
+  (get-folders-system system)
+  (make-archivo
+   name
+   extencion
+   cont
+  (get-current-path-system system))  
+  (get-current-path-system system)
+  )
+  )
 
+
+;;R13: TDA system - rd (remove directory): función para eliminar una carpeta, siempre y cuando ésta esté vacía
+(define (extract-path path)
+ (string-append  (car (string-split path "/"))"/"(cadr(string-split path "/"))))
+
+(define (Archivos-en-dir? List-Archivos path-dir Acc)  ;; Para contar los archivos de una carpeta
+  (if (null? List-Archivos) Acc
+      (if (equal? (extract-path(car(cdr(cdr(cdr(car List-Archivos )))))) path-dir)
+          (Archivos-en-dir? (cdr List-Archivos) path-dir (+ 1 Acc))
+          (Archivos-en-dir? (cdr List-Archivos) path-dir Acc)                 
+          )))
+
+(define (Find-element list-folder name-folder)
+    (if (string=?(car(car list-folder)) name-folder)
+    (list (car(car list-folder)) (car(cdr(car list-folder))) (car(cdr(cdr(car list-folder)))) (car(cdr(cdr(cdr(car list-folder))))) (car(cdr(cdr(cdr(cdr(car list-folder)))))))
+    (Find-element (cdr list-folder) name-folder)
+    ))
+
+(define ((rd system) name-folder)
+  (if (=(Archivos-en-dir? (get-archivos-system system) (get-current-path-system system) 0) 0)
+      (make-system
+       (get-name-system system)
+       (get-users-system system)
+       (get-current-user-system system)
+       (get-drives-system system)
+       (get-current-drive-system system)
+       (remove (Find-element (get-folders-system system) name-folder) (get-folders-system system))
+       (get-archivos-system system)
+       (get-current-path-system system))
+
+      (make-system
+       (get-name-system system)
+       (get-users-system system)
+       (get-current-user-system system)
+       (get-drives-system system)
+       (get-current-drive-system system)
+       (get-folders-system system)
+       (get-archivos-system system)
+       (get-current-path-system system))))
+
+
+
+;;R14: System - copy: función para copiar un archivo o carpeta desde una ruta origen a una ruta destino.
+(define (folder-or-file name) ;; para saber si se trata de archivo o carpeta 
+(define (extension? list-char  Acc)
+  (if (null? list-char) Acc
+      (if (char=? (car list-char) #\. )
+          (extension? (cdr list-char) (+ 1 Acc))
+          (extension? (cdr list-char) Acc))))
+(if (>= 0 (extension? (string->list name) 0)) "File"  "Folder"))
+
+
+
+
+(define (string-lista str)
+  
 
 
 
@@ -173,3 +245,5 @@
 (define S5 ((run S4 login) "user1"))
 (define S6 ((run S5 switch-drive) #\C))
 (define S7 ((run S6 md) "folder2"))
+(define S8 ((run S7 add-file) "foo1.txt" "txt" "hello world 1"))
+(define S9 ((run S8 rd) "folder2"))
