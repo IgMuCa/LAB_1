@@ -6,21 +6,27 @@
 ;;Type archivo = tipo x  name X extención X contenido X atributos X ubicacion
 
 
-;; RF2 - Constructor inicial: System sera lista de: Nombre x drives x Usuasios x Folders
- (define (system name)           
-   (list name '() '() '() '() '() '() '())
-  )
 
- (define (make-system name users current-user drives current-drive folders archivos current-path)
+
+
+;; RF2 - Constructor inicial: System sera lista de: Nombre x drives x Usuasios x Folders
+(define (system name)           
+   (list name '() '() '() '() '() '() '()))
+
+(define (make-system name users current-user drives current-drive folders archivos current-path)
    (list name users current-user drives current-drive folders archivos current-path))
 
+(define (make-archivo name extencion cont ubicacion)                       ;; Se contruye archivo
+  (list(list name extencion cont ubicacion)))
 
-   
+(define (make-md name ubicacion creador date-creacion date-modificacion)   ;; Se construye la carpeta
+  (list(list name ubicacion creador date-creacion date-modificacion)))
+
+ 
 ;; RF3 -  RUN:Permite ejecutar un comando sobre el sistema
  (define (run system cmd)
    (cmd system))
    
-
 
 ;;RF4 - add-drive:Permite agregar un drive
 (define get-name-system car) ;; permite acceder al nombre
@@ -63,11 +69,14 @@
  
 
 ;;RF6 - Función login: que permite iniciar sesión con un usuario del sistema, solo si éste existe.
-(define (existe-user?  system user)
-  (member user  (get-users-system system))
-  )
+(define (existe-user?  listUsers  NameUser Acc)
+  (if (null? listUsers) Acc
+      (if (string=? (car listUsers) NameUser)
+          (existe-user? (cdr listUsers) (+ 1 Acc))
+          (existe-user? (cdr listUsers) Acc))
+ 
 
-(define ((login system) user )
+(define ((login system) NameUser )
  (cond
   [(existe-user? system user)
  (make-system                    
@@ -131,9 +140,6 @@
 
    
 ;;RF9.- md: Permite crear un directorio dentro de una unidad a partir del nombre especificado.
-(define (make-md name ubicacion creador date-creacion date-modificacion)   ;; Se construye la carpeta
-  (list(list name ubicacion creador date-creacion date-modificacion)))
-
 (define ((md system) namecd)
  (make-system                    
   (get-name-system system)
@@ -153,9 +159,6 @@
 
 ;;R11: función que permite añadir un archivo en la ruta actual.
 ;;Type archivo =  tipo x name X extención X contenido X atributos X ubicacion
-(define (make-archivo name extencion cont ubicacion)   
-  (list(list name extencion cont ubicacion)))
-
 ;;(define S32 ((run S31 add-file) ("foo1.txt" "txt" "hello world 1")))
 (define  ((add-file system)name extencion cont)
 (make-system                    
@@ -170,9 +173,7 @@
    extencion
    cont
   (get-current-path-system system))  
-  (get-current-path-system system)
-  )
-  )
+  (get-current-path-system system) ))
 
 
 ;;R13: TDA system - rd (remove directory): función para eliminar una carpeta, siempre y cuando ésta esté vacía
@@ -183,14 +184,12 @@
   (if (null? List-Archivos) Acc
       (if (equal? (extract-path(car(cdr(cdr(cdr(car List-Archivos )))))) path-dir)
           (Archivos-en-dir? (cdr List-Archivos) path-dir (+ 1 Acc))
-          (Archivos-en-dir? (cdr List-Archivos) path-dir Acc)                 
-          )))
+          (Archivos-en-dir? (cdr List-Archivos) path-dir Acc) )))
 
 (define (Find-element list-folder name-folder)
     (if (string=?(car(car list-folder)) name-folder)
     (list (car(car list-folder)) (car(cdr(car list-folder))) (car(cdr(cdr(car list-folder)))) (car(cdr(cdr(cdr(car list-folder))))) (car(cdr(cdr(cdr(cdr(car list-folder)))))))
-    (Find-element (cdr list-folder) name-folder)
-    ))
+    (Find-element (cdr list-folder) name-folder) ))
 
 (define ((rd system) name-folder)
   (if (=(Archivos-en-dir? (get-archivos-system system) (get-current-path-system system) 0) 0)
@@ -217,7 +216,7 @@
 
 
 ;;R14: System - copy: función para copiar un archivo o carpeta desde una ruta origen a una ruta destino.
-(define (folder-or-file name) ;; para saber si se trata de archivo o carpeta 
+(define (folder-or-file name) ;; Funcion con el objetivo de saber si se trata de archivo o carpeta 
 (define (extension? list-char  Acc)
   (if (null? list-char) Acc
       (if (char=? (car list-char) #\. )
@@ -226,10 +225,29 @@
 (if (>= 0 (extension? (string->list name) 0)) "File"  "Folder"))
 
 
+(define ((copy system) name path-to-copy)
+   (if (string=? (folder-or-file name) "File")
+     (make-system
+       (get-name-system system)
+       (get-users-system system)
+       (get-current-user-system system)
+       (get-drives-system system)
+       (get-current-drive-system system)
+       (get-folders-system system)
+       (cons(list(car(string-split name ".")) (cdr(string-split name ".") " " path-to-copy)(get-archivos-system system))) ;; FALTA AGRGAR CONTENIDO
+       (get-current-path-system system))
 
+     (make-system
+       (get-name-system system)
+       (get-users-system system)
+       (get-current-user-system system)
+       (get-drives-system system)
+       (get-current-drive-system system)
+       (cons (list name path-to-copy (get-current-user-system system) "date-creacion" "date-modificacion")) (get-folders-system system))
+       (get-archivos-system system)
+       (get-current-path-system system)))  
+      
 
-(define (string-lista str)
-  
 
 
 
