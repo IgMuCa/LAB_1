@@ -1,267 +1,316 @@
 #lang racket
 ;;TDA
-;;Type System = name (String) x users (String list) x current-user (String) x drives(drive list) x current-drive (char) x folders(list folder) x archivos x current-path(list)
-;;Type drive = sigla-drive (string) X name (string) X capacidad (int)
-;;Type folder (md) = creador x date-creacion x date-modificacion x name x ubicacion (ruta) 
-;;Type archivo = tipo x  name X extención X contenido X atributos X ubicacion
+;; Type System = Name (String) X Users (list string) X Drives (list drive) X Current-user (String) X current-drive(char) X current-path(String carpeta de trabajo) X Archivos/Carpetas (list archivos-carpetas)
+;; Type archivos-carpetas= (drive-path) x (archivo de ese path) x extension-archivo x fecha x usuario)
+;; Type drive= char x string x number
+;; Type Papelera = '(drive-path (archivo de ese path) extension-archivo  fecha  usuario)  / asociado a los archivos eliminador y no forma parte del sistema
 
+;;FUNCIONES AUXILIARES (PARA APOYAR IMPLENETACION TRANSVERSAL DE FUNCIONES):
+;;Funcion auxiliar para buscar elementos en una lista
+(define (existe?  listName  Name Acc)                  
+  (if (null? listName) Acc
+      (if (string=? (car listName) Name)
+          (existe? (cdr listName) Name (+ 1 Acc))
+          (existe? (cdr listName) Name Acc))))
 
+;;Funcion para contar elementos de culaquier lista
+(define (count-elements lst)
+  (if (null? lst)
+      0
+      (+ 1 (count-elements (cdr lst)))))
 
 
 
 ;; RF2 - Constructor inicial: System sera lista de: Nombre x drives x Usuasios x Folders
-(define (system name)           
-   (list name '() '() '() '() '() '() '()))
+(define (system Name)           
+   (list Name '() '() " " '() " " '()))
 
-(define (make-system name users current-user drives current-drive folders archivos current-path)
-   (list name users current-user drives current-drive folders archivos current-path))
+(define (make-system Name Users Drives CurrentUser CurrentDrive CurrentPath Archivos/carpetas)
+   (list Name Users Drives CurrentUser CurrentDrive CurrentPath Archivos/carpetas))
 
-(define (make-archivo name extencion cont ubicacion)                       ;; Se contruye archivo
-  (list(list name extencion cont ubicacion)))
 
-(define (make-md name ubicacion creador date-creacion date-modificacion)   ;; Se construye la carpeta
-  (list(list name ubicacion creador date-creacion date-modificacion)))
-
- 
 ;; RF3 -  RUN:Permite ejecutar un comando sobre el sistema
  (define (run system cmd)
    (cmd system))
-   
+
 
 ;;RF4 - add-drive:Permite agregar un drive
-(define get-name-system car) ;; permite acceder al nombre
-(define get-users-system cadr) ;; permite acceder al drive
-(define get-current-user-system caddr) ;; permite acceder a la lista de usuarios
-(define get-drives-system cadddr) ;; permite acceder a la lista de folders
-(define (get-current-drive-system system) (car (cdr (cdr (cdr (cdr system   ))))))
-(define (get-folders-system system) (car (cdr (cdr (cdr (cdr (cdr system   )))))))
-(define (get-archivos-system system) (car (cdr (cdr (cdr (cdr (cdr (cdr system   ))))))))
-(define (get-current-path-system system) (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr system   )))))))))
+;; Type System = Name (String) X Users (list string) X Drives (list drive) X Current-user (String) X current-drive(char) X current-path(String) X Archivos/Carpetas (list archivos-carpetas)
+(define get-Name-system car) ;; permite acceder al nombre del sistema 
+(define get-Users-system cadr) ;; permite acceder al listado de usuarios
+(define get-Drives-system caddr) ;; permite acceder a la lista de drives
+(define get-CurrentUser-system cadddr) ;; permite acceder al listado de usuarios
+(define (get-CurrentDrive-system system) (car (cdr (cdr (cdr (cdr system ))))))  ;; permite acceder al usuario actual
+(define (get-currentPath-system system) (car (cdr (cdr (cdr (cdr (cdr  system   ))))))) ;; permite acceder a la ruta actual
+(define (get-Archivos/carpetas system) (car (cdr (cdr (cdr (cdr (cdr (cdr system   )))))))) ;; permite acceder a la lista de archivos y carpetas
 
 
-(define ((add-drive system) sigla-drive newdrive capacidad )  ;; drive es el drive (que es una lista con letra xnombre x capacidad) que se quiere agregar
+
+(define ((add-drive system) drive namedrive capacidad )  ;; drive es el drive (que es una lista con letra xnombre x capacidad) que se quiere agregar
  (make-system                    
-  (get-name-system system)
-  (get-users-system system)
-  (get-current-user-system system)
-  (cons (list sigla-drive newdrive capacidad) (get-drives-system system))
-  (get-current-drive-system system)
-  (get-folders-system system)
-  (get-archivos-system system)
-  (get-current-path-system system)
-  )
- )
+  (get-Name-system system)
+  (get-Users-system system)
+  (cons (list drive namedrive capacidad)(get-Drives-system system))
+  (get-CurrentUser-system system)
+  (get-CurrentDrive-system system)
+  (get-currentPath-system system)
+  (get-Archivos/carpetas system)
+  ))
 
 
-;;RF5 - add-users:Permite agregar un nuevo user
-(define ((add-user system) NewUser )  
+;;RF5 - add-users:Permite agregar un nuevo usuario
+(define ((add-user system) NewUser )
+(if (> (existe?  (get-Users-system system)  NewUser  0)  0) system
  (make-system                    
-  (get-name-system system)
-  (cons NewUser (get-users-system system))
-  (get-current-user-system system)
-  (get-drives-system system)
-  (get-current-drive-system system)
-  (get-folders-system system)
-  (get-archivos-system system)
-  (get-current-path-system system)
-  )
- )
+  (get-Name-system system)
+  (cons NewUser (get-Users-system system))
+  (get-Drives-system system)
+  (get-CurrentUser-system system)
+  (get-CurrentDrive-system system)
+  (get-currentPath-system system)
+  (get-Archivos/carpetas system))))
  
 
 ;;RF6 - Función login: que permite iniciar sesión con un usuario del sistema, solo si éste existe.
-(define (existe-user?  listUsers  NameUser Acc)
-  (if (null? listUsers) Acc
-      (if (string=? (car listUsers) NameUser)
-          (existe-user? (cdr listUsers) (+ 1 Acc))
-          (existe-user? (cdr listUsers) Acc))
- 
-
-(define ((login system) NameUser )
- (cond
-  [(existe-user? system user)
+(define ((login system) NameUser)
+ (if (>(existe? (get-Users-system system) NameUser 0) 0)
  (make-system                    
-  (get-name-system system)
-  (get-users-system system)
-  (cons user (get-current-user-system system))
-  (get-drives-system system)
-  (get-current-drive-system system)
-  (get-folders-system system)
-  (get-archivos-system system)
-  (get-current-path-system system)
-  )
-  ]
- ))
+ (get-Name-system system)
+ (get-Users-system system)
+ (get-Drives-system system)
+  NameUser
+ (get-CurrentDrive-system system)
+ (get-currentPath-system system)
+ (get-Archivos/carpetas system))
+ system))
 
 
-;;RF7 - Función logout: permite cerrar la sesión de un usuario en el sistema.
+;;;;RF7 - Función logout: permite cerrar la sesión de un usuario en el sistema.
 (define (logout system)
  (make-system                    
-  (get-name-system system)
-  (get-users-system system)
-  (cdr (get-current-user-system system))
-  (get-drives-system system)
-  (get-current-drive-system system)
-  (get-folders-system system)
-  (get-archivos-system system)
-  (get-current-path-system system)
-  )
- )
+ (get-Name-system system)
+ (get-Users-system system)
+ (get-Drives-system system)
+  " "
+ (get-CurrentDrive-system system)
+ (get-currentPath-system system)
+ (get-Archivos/carpetas system)))
+
 
 
 ;;RF8.-Permite fijar la unidad en la que el usuario realizará acciones. 
 ;;La función solo debe funcionar cuando hay un usuario con sesión iniciada en el sistema a partir de la función descrita en 6.
-;;Por mejorar: asegurar que el drive que se active esté en la lista de drives
-(define (sin-user? system)
-  (empty?(get-current-user-system system)))
+(define (existeDrive?  list Drive Acc)               ;; Funcion auxiliar especifica para ver si exite el drive a activar           
+  (if (null? list) Acc
+      (if (char=? (car (car list)) Drive)
+          (existeDrive? (cdr list) Drive (+ 1 Acc))
+          (existeDrive? (cdr list) Drive Acc))))
 
-(define ((switch-drive system) drv)
-  (if (sin-user? system)
-      (make-system                    
-  (get-name-system system)
-  (get-users-system system)
-  (get-current-user-system system)
-  (get-drives-system system)
-  (get-current-drive-system system)
-  (get-folders-system system)
-  (get-archivos-system system)
-  (get-current-path-system system)
-  )
-  (make-system                    
-  (get-name-system system)
-  (get-users-system system)
-  (get-current-user-system system)
-  (get-drives-system system)
-  (cons drv (get-current-drive-system system))
-  (get-folders-system system)
-  (get-archivos-system system)
-  (get-current-path-system system)
-  ))
-  )
+(define ((switch-drive system) CharDrive)
+  (if (string=? (get-CurrentUser-system system) " ")
+    system
+     (if (>(existeDrive? (get-Drives-system system) CharDrive 0)0)
+       (make-system                    
+          (get-Name-system system)
+          (get-Users-system system)
+          (get-Drives-system system)
+          (get-CurrentUser-system system)
+           CharDrive
+          (string CharDrive #\: #\/)
+          (get-Archivos/carpetas system))
+         system)))
+  
 
-   
+
 ;;RF9.- md: Permite crear un directorio dentro de una unidad a partir del nombre especificado.
-(define ((md system) namecd)
- (make-system                    
-  (get-name-system system)
-  (get-users-system system)
-  (get-current-user-system system)
-  (get-drives-system system)
-  (get-current-drive-system system)
-  (make-md namecd (string (car(get-current-drive-system system))) '() '() '())
-  (get-archivos-system system)
-  (string-append (string (car(get-current-drive-system system))) "/" namecd)
-  )
- )
+;;Se crea el constructor de los md
+(define (make-cd drivePath files extensionFile Date UserCreator)
+        (list drivePath '() " " Date UserCreator))
+
+(define ((cd system) cdName)  
+(make-system                    
+  (get-Name-system system)
+  (get-Users-system system)
+  (get-Drives-system system)
+  (get-CurrentUser-system system)
+  (get-CurrentDrive-system system)
+  (get-currentPath-system system)
+  (cons (make-cd (string-append (get-currentPath-system system) cdName "/") '() " " (current-seconds) (get-CurrentUser-system system))(get-Archivos/carpetas system))))
+
 
 ;;R10: cd función que permite cambiar la ruta (path) donde se realizarán operaciones
+(define (DividePath string)                                                  ;; Función auxiliar especifica que determina si es carpeta o archivo a partir del ultimo caracter de la ruta y los lleva a una list de string sin "/"
+  (if  (char=? (car(reverse(string->list string))) #\/)
+        (reverse(cdr (reverse (string-split string "/"))))
+        (reverse( cdr (cdr (reverse (string-split string "/")))))))
+
+(define (PathInverse list listFinal)                                         ;; Funcion auxiliar especifica que a la lista anterior le incluye los "/" pero los deja invertidos
+    (if (null? list) listFinal
+        (PathInverse (cdr list) (cons "/" (cons (car list) listFinal)))))
+
+(define (BackRoot string)                                                  ;; Función auxiliar especifica que determina si es carpeta o archivo a partir del ultimo caracter de la ruta y los lleva a una list de string sin "/"
+   (car (string-split string "/")))
 
 
-
-;;R11: función que permite añadir un archivo en la ruta actual.
-;;Type archivo =  tipo x name X extención X contenido X atributos X ubicacion
-;;(define S32 ((run S31 add-file) ("foo1.txt" "txt" "hello world 1")))
-(define  ((add-file system)name extencion cont)
+(define ((cd2 system) ComandoOrFolderOrSubfolder)
 (make-system                    
-  (get-name-system system)
-  (get-users-system system)
-  (get-current-user-system system)
-  (get-drives-system system)
-  (get-current-drive-system system)
-  (get-folders-system system)
-  (make-archivo
-   name
-   extencion
-   cont
-  (get-current-path-system system))  
-  (get-current-path-system system) ))
+  (get-Name-system system)
+  (get-Users-system system)
+  (get-Drives-system system)
+  (get-CurrentUser-system system)
+  (get-CurrentDrive-system system)
+  (cond
+    [(string=? ComandoOrFolderOrSubfolder "..")
+     (if (= 1(count-elements (string-split (get-currentPath-system system) "/")))
+     (get-currentPath-system system)   
+     (reverse (PathInverse (DividePath (get-currentPath-system system))  '() ))) ]
+    [(string=? ComandoOrFolderOrSubfolder "/")  (BackRoot(get-currentPath-system system))]
+    [(string? ComandoOrFolderOrSubfolder)  (string-append (get-currentPath-system system) ComandoOrFolderOrSubfolder "/")])
+  (get-Archivos/carpetas system)))
 
 
-;;R13: TDA system - rd (remove directory): función para eliminar una carpeta, siempre y cuando ésta esté vacía
-(define (extract-path path)
- (string-append  (car (string-split path "/"))"/"(cadr(string-split path "/"))))
+;;R11: add-file función que permite añadir un archivo en la ruta actual.
+;;Se define el constructor del files
+(define (file filename extension contenido . atributos)
+  (list filename extension contenido atributos))
 
-(define (Archivos-en-dir? List-Archivos path-dir Acc)  ;; Para contar los archivos de una carpeta
-  (if (null? List-Archivos) Acc
-      (if (equal? (extract-path(car(cdr(cdr(cdr(car List-Archivos )))))) path-dir)
-          (Archivos-en-dir? (cdr List-Archivos) path-dir (+ 1 Acc))
-          (Archivos-en-dir? (cdr List-Archivos) path-dir Acc) )))
-
-(define (Find-element list-folder name-folder)
-    (if (string=?(car(car list-folder)) name-folder)
-    (list (car(car list-folder)) (car(cdr(car list-folder))) (car(cdr(cdr(car list-folder)))) (car(cdr(cdr(cdr(car list-folder))))) (car(cdr(cdr(cdr(cdr(car list-folder)))))))
-    (Find-element (cdr list-folder) name-folder) ))
-
-(define ((rd system) name-folder)
-  (if (=(Archivos-en-dir? (get-archivos-system system) (get-current-path-system system) 0) 0)
-      (make-system
-       (get-name-system system)
-       (get-users-system system)
-       (get-current-user-system system)
-       (get-drives-system system)
-       (get-current-drive-system system)
-       (remove (Find-element (get-folders-system system) name-folder) (get-folders-system system))
-       (get-archivos-system system)
-       (get-current-path-system system))
-
-      (make-system
-       (get-name-system system)
-       (get-users-system system)
-       (get-current-user-system system)
-       (get-drives-system system)
-       (get-current-drive-system system)
-       (get-folders-system system)
-       (get-archivos-system system)
-       (get-current-path-system system))))
+;;Filter para seleccionar los registros de la base Archivos/carpetas asociados al current-path (Este archivo puede usarse en requerimientos posteriores.
+ (define (filterAC listAC CurrentPath)      ;;listAC tiene por objetivo guardar los elementos de Archivos/carpetas
+  (if (null? listAC) null
+      (if (string=? (car (car listAC)) CurrentPath)
+           (cons (car listAC) (filterAC (cdr listAC) CurrentPath))
+           (filterAC (cdr listAC) CurrentPath)   )))
 
 
-
-;;R14: System - copy: función para copiar un archivo o carpeta desde una ruta origen a una ruta destino.
-(define (folder-or-file name) ;; Funcion con el objetivo de saber si se trata de archivo o carpeta 
-(define (extension? list-char  Acc)
-  (if (null? list-char) Acc
-      (if (char=? (car list-char) #\. )
-          (extension? (cdr list-char) (+ 1 Acc))
-          (extension? (cdr list-char) Acc))))
-(if (>= 0 (extension? (string->list name) 0)) "File"  "Folder"))
+(define ((add-file system) list-file)
+  (filterAC (get-Archivos/carpetas system) (get-currentPath-system system))
+  (list (string-append (car (car(filterAC (get-Archivos/carpetas system) (get-currentPath-system system))))) list-file (cadr list-file) (car(filterAC (get-Archivos/carpetas system) (get-currentPath-system system))) (get-CurrentUser-system system)))
+  
 
 
-(define ((copy system) name path-to-copy)
-   (if (string=? (folder-or-file name) "File")
-     (make-system
-       (get-name-system system)
-       (get-users-system system)
-       (get-current-user-system system)
-       (get-drives-system system)
-       (get-current-drive-system system)
-       (get-folders-system system)
-       (cons(list(car(string-split name ".")) (cdr(string-split name ".") " " path-to-copy)(get-archivos-system system))) ;; FALTA AGRGAR CONTENIDO
-       (get-current-path-system system))
+;;R13: 
+;;Filtra los registros en "Archivos/carpetas" cuyo path contenga el nombre de la carpeta y que tengan archivos
+(define (CarpetaVacia? ListAC NameCarpeta Acc)        ;; De manera que si Acc > 1 entonces la carpeta no esta vacía 
+(if (null? ListAC) Acc
+  (if (boolean=? (memq NameCarpeta (string-split (car(car ListAC)) "/")) false)
+      (CarpetaVacia? (cdr ListAC) NameCarpeta Acc)
+      (if (null? (caddr(car ListAC)))
+          (CarpetaVacia? (cdr ListAC) NameCarpeta Acc)         
+          (CarpetaVacia? (cdr ListAC) NameCarpeta (+1 Acc)))  
+       )))
 
-     (make-system
-       (get-name-system system)
-       (get-users-system system)
-       (get-current-user-system system)
-       (get-drives-system system)
-       (get-current-drive-system system)
-       (cons (list name path-to-copy (get-current-user-system system) "date-creacion" "date-modificacion")) (get-folders-system system))
-       (get-archivos-system system)
-       (get-current-path-system system)))  
-      
+(define ((rd system) folder)
+  (if (>(CarpetaVacia? (get-Archivos/carpetas system) folder  0 )0)
+      system                                                                 ;; Falta borrar la carpeta
+      system
+  ))
+
+        
 
 
+;;R14: Copiar archivos y carpetas
+(define (DatosFile Namefile ListAC)                 ;; entrega la lista con los datos del archivo a copiar                                          
+    (if (null? ListAC) null
+            (if (list?(member Namefile (string-split (car(car ListAC)) "/")))
+            (car ListAC)
+            (DatosFile Namefile (cdr ListAC)))))
+                
+
+(define (DatosFolder Namefolder ListAC)               ;; entrega lists con los datos de la carpeta a copiar                                  
+    (if (null? ListAC) null
+            (if (list?(member Namefolder(string-split (car(car ListAC)) "/")))
+            (car ListAC)
+            (DatosFile Namefolder (cdr ListAC)))))
+        
+
+(define (FileOrFolder StringName)                     ;; entrega si un string es archivo o carpeta dependiendo si tiene extensión
+   (if (list? (member #\. (string->list StringName)))
+    "A" "C"))
+
+
+(define ((copy system)NameFileOrFolder PathDestino)
+  (if (string=?(FileOrFolder NameFileOrFolder) "A")
+    (make-system                    
+       (get-Name-system system)
+       (get-Users-system system)
+       (get-Drives-system system)
+       (get-CurrentUser-system system)
+       (get-CurrentDrive-system system)
+       (get-currentPath-system system)
+       (cons (list (string-append PathDestino NameFileOrFolder) (cadr(DatosFile NameFileOrFolder (get-Archivos/carpetas system))) (caddr(DatosFile NameFileOrFolder (get-Archivos/carpetas system))) (cadddr(DatosFile NameFileOrFolder (get-Archivos/carpetas system))) (car (cdr (cdr (cdr (cdr (DatosFile NameFileOrFolder (get-Archivos/carpetas system)))))))) (get-Archivos/carpetas system))
+       )
+    (make-system                    
+       (get-Name-system system)
+       (get-Users-system system)
+       (get-Drives-system system)
+       (get-CurrentUser-system system)
+       (get-CurrentDrive-system system)
+       (get-currentPath-system system)
+       (cons (list (string-append PathDestino NameFileOrFolder)(cadr(DatosFolder NameFileOrFolder (get-Archivos/carpetas system))) (caddr(DatosFolder NameFileOrFolder (get-Archivos/carpetas system))) (cadddr(DatosFolder NameFileOrFolder (get-Archivos/carpetas system))) (car (cdr (cdr (cdr (cdr (DatosFolder NameFileOrFolder (get-Archivos/carpetas system)))))))) (get-Archivos/carpetas system))
+             
+       )))
 
 
 
 
 
+  
+;;R15
+
+
+
+
+  
+;;R16
+(define (replace lst old new)                            ;; permite reemplazar un elemento (old) por otro (new)
+  (map (lambda (x) (if (eq? x old) new x)) lst))
+
+(define (sublist? lst sublst)                            ;; permite determinar si un elemento es sublista de otro
+  (cond
+    ((null? sublst) #t) 
+    ((null? lst) #f) 
+    ((equal? lst sublst) #t) 
+    ((not (pair? lst)) #f) 
+    ((sublist? (cdr lst) sublst)) 
+    ((sublist? (cdr lst) (cdr sublst))))) 
+
+
+
+
+
+;;R21 Función plus-one
+(define (plus char)
+  (integer->char (+ 1 (char->integer char))))
+
+(define (plus-one texto)
+  (list->string (map (lambda (char) (plus char)) (string->list texto))))
+
+
+;;R22 Función plus-one
+(define (minus char)
+  (integer->char (+ (- 1) (char->integer char))))
+
+(define (minus-one texto)
+  (list->string (map (lambda (char) (minus char)) (string->list texto))))
+
+
+
+  
 ;;SCRIPTS:
 (define S0 (system "newSystem"))
 (define S1 ((run S0 add-drive) #\C "SO" 1000))
-(define S2 ((run S1 add-user) "user1"))
-(define S3 ((run S2 login) "user1"))
-(define S4 (run S3 logout))
-(define S5 ((run S4 login) "user1"))
-(define S6 ((run S5 switch-drive) #\C))
-(define S7 ((run S6 md) "folder2"))
-(define S8 ((run S7 add-file) "foo1.txt" "txt" "hello world 1"))
-(define S9 ((run S8 rd) "folder2"))
+(define S2 ((run S1 add-drive) #\C "SO1" 3000))
+(define S3 ((run S2 add-drive) #\D "Util" 2000))
+(define S4 ((run S3 add-user) "user1"))
+(define S5 ((run S4 add-user) "user1"))
+(define S6 ((run S5 add-user) "user2"))
+(define S7 ((run S6 login) "user1"))
+(define S8 ((run S7 login) "user2"))
+(define S9 (run S8 logout))
+(define S10 ((run S9 login) "user2"))
+(define S11 ((run S10 switch-drive) #\K))
+(define S12 ((run S11 switch-drive) #\C))
+(define S13 ((run S12 cd) "folder1"))           ;;Error cuando se habla de carpeta se invoca con cd
+(define S14 ((run S13 cd2) "folder1"))
+(define S15 ((run S14 rd) "folder1"))
+(define S16 ((run S15 copy) "folder1" "D:/"))
