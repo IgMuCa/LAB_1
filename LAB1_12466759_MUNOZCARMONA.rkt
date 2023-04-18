@@ -1,3 +1,4 @@
+
 #lang racket
 ;;TDA
 ;; Type System = Name (String) X Users (list string) X Drives (list drive) X Current-user (String) X current-drive(char) X current-path(String carpeta de trabajo) X Archivos/Carpetas (list archivos-carpetas)
@@ -12,6 +13,7 @@
       (if (string=? (car listName) Name)
           (existe? (cdr listName) Name (+ 1 Acc))
           (existe? (cdr listName) Name Acc))))
+
 
 ;;Funcion para contar elementos de culaquier lista
 (define (count-elements lst)
@@ -46,7 +48,7 @@
 
 
 
-(define ((add-drive system) drive namedrive capacidad )  ;; drive es el drive (que es una lista con letra xnombre x capacidad) que se quiere agregar
+(define ((add-drive system) drive namedrive capacidad )  ;; es el drive (que es una lista con letra xnombre x capacidad) que se quiere agregar
  (make-system                    
   (get-Name-system system)
   (get-Users-system system)
@@ -188,6 +190,11 @@
   
 
 
+
+;;R12;
+
+
+
 ;;R13: 
 ;;Filtra los registros en "Archivos/carpetas" cuyo path contenga el nombre de la carpeta y que tengan archivos
 (define (CarpetaVacia? ListAC NameCarpeta Acc)        ;; De manera que si Acc > 1 entonces la carpeta no esta vacía 
@@ -265,14 +272,85 @@
 (define (replace lst old new)                            ;; permite reemplazar un elemento (old) por otro (new)
   (map (lambda (x) (if (eq? x old) new x)) lst))
 
-(define (sublist? lst sublst)                            ;; permite determinar si un elemento es sublista de otro
-  (cond
-    ((null? sublst) #t) 
-    ((null? lst) #f) 
-    ((equal? lst sublst) #t) 
-    ((not (pair? lst)) #f) 
-    ((sublist? (cdr lst) sublst)) 
-    ((sublist? (cdr lst) (cdr sublst))))) 
+;;(define (sublist? lst sublst)                            ;; permite determinar si un elemento es sublista de otro
+  ;;(cond
+    ;;((null? sublst) #t) 
+    ;;((null? lst) #f) 
+    ;;((equal? lst sublst) #t) 
+    ;;((not (pair? lst)) #f) 
+    ;;((sublist? (cdr lst) sublst)) 
+    ;;((sublist? (cdr lst) (cdr sublst))))) 
+
+;;(define (ActalizarAC listRegistro  OldName NewName)
+ ;; (if (list? (member NewName (string-split (car listRegistro)"/")))
+   ;;   (replace (string-split (car listRegistro)"/") OldName NewName) 
+;;        (if (string=?(FileOrFolder OldName) "A")
+  ;;         (replace (cadr listRegistro) OldName NewName)
+           
+    ;;  )))
+
+;;(define ((ren system) NewName)
+;;(map (lambda (x  OldName NewName) (ActalizarAC x OldName NewName)) (get-Archivos/carpetas system)))
+
+
+
+;;R18: Formatear un disco y renombrarlo
+(define (FiltrarPorDrive NameDrive listAC)      ;;Permite filtrar los registros que tienen de raiz el drive buscado
+  (if (null? listAC) null
+      (if (list? (member NameDrive (string-split (car(car listAC)) "/")))
+          (cons (car listAC) (FiltrarPorDrive NameDrive (cdr listAC)))
+          (FiltrarPorDrive NameDrive (cdr listAC)))))
+
+
+(define (Move sublist list listRef)             ;; Permite mover una sublista de una lista
+  (if (null? sublist) listRef
+      (if (list? (member (car sublist) list))
+          (Move (cdr sublist) list (remove (car sublist) listRef))
+          
+          (Move (cdr sublist) list listRef) )))
+
+(define (MapRenombrar NameDrive NewName listDrives)   ;; Es un map que renombra el disco formateado
+  (if (null? listDrives) null
+      (if (char=? (car (string->list NameDrive)) (car (car listDrives)))
+                     (cons(cons(car(car listDrives)) (cons NewName (cdr(cdr(car listDrives))))) (MapRenombrar NameDrive NewName (cdr listDrives)))
+                     (cons (car listDrives)(MapRenombrar NameDrive NewName (cdr listDrives))))))
+   
+
+(define ((Format System) NameDrive NewName)
+  (Move (FiltrarPorDrive NameDrive (get-Archivos/carpetas system)) (get-Archivos/carpetas system) (get-Archivos/carpetas system)) ;;Incluir la construcción del sistema
+  (MapRenombrar NameDrive NewName (get-Drives-system system) ))
+
+
+;;R19:
+(define (ArchivoOrCarpeta Name)
+  (if (list? (member #\. (string->list Name)))
+      "File" "Folder"))
+
+;;Crear la funcion encriptar FNEncryp
+
+
+(define (MapEncryp Name listAC)
+  (if (null? listAC) null
+      (if  (or (and (string=?(ArchivoOrCarpeta Name) "Folder")  (string=?(ArchivoOrCarpeta (car (reverse (string-split (car (car listAC)) "/")))) "File"))      (and (string=?(ArchivoOrCarpeta Name) "File")  (string=?(ArchivoOrCarpeta (car (reverse (string-split (car (car listAC)) "/")))) "File")))
+           (cons (FNencryp (car listAC))(MapEncryp Name (cdr listAC)))
+           (cons (car listAC)(MapEncryp Name (cdr listAC))))))
+
+
+
+
+
+
+;;R20:
+
+;;Crear la funcion encriptar FNDesEncryp
+
+
+(define (MapEncryp Name listAC)
+  (if (null? listAC) null
+      (if  (or (and (string=?(ArchivoOrCarpeta Name) "Folder")  (string=?(ArchivoOrCarpeta (car (reverse (string-split (car (car listAC)) "/")))) "File"))      (and (string=?(ArchivoOrCarpeta Name) "File")  (string=?(ArchivoOrCarpeta (car (reverse (string-split (car (car listAC)) "/")))) "File")))
+           (cons (FNDeencryp (car listAC))(MapEncryp Name (cdr listAC)))
+           (cons (car listAC)(MapEncryp Name (cdr listAC))))))
+
 
 
 
