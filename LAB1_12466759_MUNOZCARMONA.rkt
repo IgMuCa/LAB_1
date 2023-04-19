@@ -175,12 +175,6 @@
       0
       (+ 1 (count-elements (cdr lst)))))
 
-(define (substring? str sub)                                                 ;; Funcion que permite saber si un string (sub) es parte de otro (str)
-  (cond ((null? sub) #t) 
-        ((string-prefix? sub str) #t) 
-        (else (substring? (substring str 1) sub)))) 
-
-
 (define (PathInverse list listFinal)                                         ;; Funcion que a la lista anterior le incluye los "/" pero los deja invertidos
     (if (null? list) listFinal
         (PathInverse (cdr list) (cons (car list)(cons "/" listFinal)))))
@@ -208,21 +202,48 @@
 
 
 ;;R11: add-file función que permite añadir un archivo en la ruta actual.
+(define (substring? str sub)                                                 ;; Funcion que permite saber si un string (sub) es parte de otro (str)
+  (cond ((null? sub) #t) 
+        ((string-prefix? sub str) #t) 
+        (else (substring? (substring str 1) sub)))) 
+
 ;;Se define el constructor del files
 (define (file filename extension contenido . atributos)
   (list filename extension contenido atributos))
 
-;;Filter para seleccionar los registros de la base Archivos/carpetas asociados al current-path (Este archivo puede usarse en requerimientos posteriores.
- (define (filterAC listAC CurrentPath)      ;;listAC tiene por objetivo guardar los elementos de Archivos/carpetas
-  (if (null? listAC) null
+;;Función para verificar que el archivo no se repite en la ruta
+ (define (filterAC listAC FilePath Contador)      ;;listAC tiene por objetivo guardar los elementos de Archivos/carpetas / el FilePath es current path + "7" + nombre archivo 
+  (if (null? listAC) Contador
+      (if (string=? (car (car listAC)) FilePath)
+           (filterAC (cdr listAC) FilePath (+1 Contador))
+           (filterAC (cdr listAC) FilePath Contador ))))
+
+(define (findReg listAC CurrentPath listAcc)  ;; selecciona el registro que coincide con el CurrentPath 
+  (if (null? listAC) listAcc
       (if (string=? (car (car listAC)) CurrentPath)
-           (cons (car listAC) (filterAC (cdr listAC) CurrentPath))
-           (filterAC (cdr listAC) CurrentPath)   )))
+          (findReg (cdr listAC) CurrentPath (cons (car listAC)  listAcc))
+          (findReg (cdr listAC) CurrentPath listAcc))))
+          
 
-
-(define ((add-file system) list-file)
-  (filterAC (get-Archivos/carpetas system) (get-currentPath-system system))
-  (list (string-append (car (car(filterAC (get-Archivos/carpetas system) (get-currentPath-system system))))) list-file (cadr list-file) (car(filterAC (get-Archivos/carpetas system) (get-currentPath-system system))) (get-CurrentUser-system system)))
+(define ((add-file system) listFile)
+ (if (= (filterAC (get-Archivos/carpetas system) (string-append (get-currentPath-system system) (car listFile)) 0) 0)
+ (make-system                    
+  (get-Name-system system)
+  (get-Users-system system)
+  (get-Drives-system system)
+  (get-CurrentUser-system system)
+  (get-CurrentDrive-system system)
+  (get-currentPath-system system)
+        ( cons         (cons       ( cons   (string-append (get-currentPath-system system) (car listFile))         listFile )       (cdr  (cdr   (findReg (get-Archivos/carpetas system) (get-currentPath-system system) '( ))  )) )      (get-Archivos/carpetas system)   ))
+  
+ (make-system                    
+  (get-Name-system system)
+  (get-Users-system system)
+  (get-Drives-system system)
+  (get-CurrentUser-system system)
+  (get-CurrentDrive-system system)
+  (get-currentPath-system system)
+  (get-Archivos/carpetas system))))
   
 
 
@@ -431,4 +452,4 @@
 (define S15 ((run S14 cd) "folder2"))
 (define S16 ((run S15 cd) "folder3"))
 (define S17 ((run S16 cd2) "/"))
-
+(define S18 ((run S17 add-file) (file "foo1.txt" "txt" "hello world 1")))
