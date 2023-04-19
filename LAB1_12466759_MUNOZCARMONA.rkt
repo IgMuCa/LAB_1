@@ -6,20 +6,6 @@
 ;; Type drive= char x string x number
 ;; Type Papelera = '(drive-path (archivo de ese path) extension-archivo  fecha  usuario)  / asociado a los archivos eliminador y no forma parte del sistema
 
-;;FUNCIONES AUXILIARES (PARA APOYAR IMPLENETACION TRANSVERSAL DE FUNCIONES):
-;;Funcion auxiliar para buscar elementos en una lista
-(define (existe?  listName  Name Acc)                  
-  (if (null? listName) Acc
-      (if (string=? (car listName) Name)
-          (existe? (cdr listName) Name (+ 1 Acc))
-          (existe? (cdr listName) Name Acc))))
-
-
-;;Funcion para contar elementos de culaquier lista
-(define (count-elements lst)
-  (if (null? lst)
-      0
-      (+ 1 (count-elements (cdr lst)))))
 
 
 
@@ -47,9 +33,28 @@
 (define (get-Archivos/carpetas system) (car (cdr (cdr (cdr (cdr (cdr (cdr system   )))))))) ;; permite acceder a la lista de archivos y carpetas
 
 
+;; Se crea función para evitar agregar el mismo drives con el mismo nombre
+(define (RepiteDrv? Char listDrive Contador)
+  (if (null? listDrive) Contador
+      (if (char=?   Char  (car (car listDrive))  )
+          (RepiteDrv? Char (cdr listDrive) (+ 1 Contador))
+          (RepiteDrv? Char (cdr listDrive) Contador ))))
+
+
 
 (define ((add-drive system) drive namedrive capacidad )  ;; es el drive (que es una lista con letra xnombre x capacidad) que se quiere agregar
+ (if ( = (RepiteDrv? drive (get-Drives-system system) 0) 1 )
  (make-system                    
+  (get-Name-system system)
+  (get-Users-system system)
+  (get-Drives-system system)
+  (get-CurrentUser-system system)
+  (get-CurrentDrive-system system)
+  (get-currentPath-system system)
+  (get-Archivos/carpetas system)
+  )
+ 
+  (make-system                    
   (get-Name-system system)
   (get-Users-system system)
   (cons (list drive namedrive capacidad)(get-Drives-system system))
@@ -57,10 +62,19 @@
   (get-CurrentDrive-system system)
   (get-currentPath-system system)
   (get-Archivos/carpetas system)
-  ))
+  )))
 
 
 ;;RF5 - add-users:Permite agregar un nuevo usuario
+;; Se crea función para evitar agregar UN uSER con el mismo nombre
+
+(define (existe?  listName  Name Acc)                        
+  (if (null? listName) Acc
+      (if (string=? (car listName) Name)
+          (existe? (cdr listName) Name (+ 1 Acc))
+          (existe? (cdr listName) Name Acc))))
+
+
 (define ((add-user system) NewUser )
 (if (> (existe?  (get-Users-system system)  NewUser  0)  0) system
  (make-system                    
@@ -125,36 +139,57 @@
 
 
 ;;RF9.- md: Permite crear un directorio dentro de una unidad a partir del nombre especificado.
-;;Se crea el constructor de los md
-(define (make-cd drivePath files extensionFile Date UserCreator)
-        (list drivePath '() " " Date UserCreator))
+;;Se crea función para determinar si esta duplicada en el drive
+(define (CarpetaDuplicada? Pathfolder listAC Acc)
+   (if (null? listAC) Acc
+       (if (string=? Pathfolder (car (car listAC)))
+           (CarpetaDuplicada? Pathfolder (cdr listAC) ( + Acc 1))
+           (CarpetaDuplicada? Pathfolder (cdr listAC) Acc))
+       ))
 
-(define ((cd system) cdName)  
-(make-system                    
+
+(define ((cd system) Name)
+   (if  (= (CarpetaDuplicada? (string-append (string (get-CurrentDrive-system system) #\: #\/) Name "/")  (get-Archivos/carpetas system) 0) 0)
+   (make-system                    
+  (get-Name-system system)
+  (get-Users-system system)
+  (get-Drives-system system)
+  (get-CurrentUser-system system)
+  (get-CurrentDrive-system system)
+  (string-append (string (get-CurrentDrive-system system) #\: #\/) Name "/")  ;;evalaur si si drive se cambia por path
+  (cons (list (string-append (string (get-CurrentDrive-system system) #\: #\/) Name "/") '() " " (current-seconds) (get-CurrentUser-system system))(get-Archivos/carpetas system)))
+
+   (make-system                    
   (get-Name-system system)
   (get-Users-system system)
   (get-Drives-system system)
   (get-CurrentUser-system system)
   (get-CurrentDrive-system system)
   (get-currentPath-system system)
-  (cons (make-cd (string-append (get-currentPath-system system) cdName "/") '() " " (current-seconds) (get-CurrentUser-system system))(get-Archivos/carpetas system))))
+  (get-Archivos/carpetas system))))
 
 
 ;;R10: cd función que permite cambiar la ruta (path) donde se realizarán operaciones
-(define (DividePath string)                                                  ;; Función auxiliar especifica que determina si es carpeta o archivo a partir del ultimo caracter de la ruta y los lleva a una list de string sin "/"
-  (if  (char=? (car(reverse(string->list string))) #\/)
-        (reverse(cdr (reverse (string-split string "/"))))
-        (reverse( cdr (cdr (reverse (string-split string "/")))))))
+(define (count-elements lst)                                                  ;; función que cuenta los elementos de una lista
+  (if (null? lst)
+      0
+      (+ 1 (count-elements (cdr lst)))))
 
-(define (PathInverse list listFinal)                                         ;; Funcion auxiliar especifica que a la lista anterior le incluye los "/" pero los deja invertidos
+(define (substring? str sub)                                                 ;; Funcion que permite saber si un string (sub) es parte de otro (str)
+  (cond ((null? sub) #t) 
+        ((string-prefix? sub str) #t) 
+        (else (substring? (substring str 1) sub)))) 
+
+
+(define (PathInverse list listFinal)                                         ;; Funcion que a la lista anterior le incluye los "/" pero los deja invertidos
     (if (null? list) listFinal
-        (PathInverse (cdr list) (cons "/" (cons (car list) listFinal)))))
+        (PathInverse (cdr list) (cons (car list)(cons "/" listFinal)))))
 
-(define (BackRoot string)                                                  ;; Función auxiliar especifica que determina si es carpeta o archivo a partir del ultimo caracter de la ruta y los lleva a una list de string sin "/"
-   (car (string-split string "/")))
+(define (BackRoot string)                                                    ;; Función que determina si es carpeta o archivo a partir del ultimo caracter de la ruta y los lleva a una list de string sin "/"
+   (string-append (car (string-split string "/")) "/" ))
 
 
-(define ((cd2 system) ComandoOrFolderOrSubfolder)
+(define ((cd2 system) Comando)
 (make-system                    
   (get-Name-system system)
   (get-Users-system system)
@@ -162,12 +197,13 @@
   (get-CurrentUser-system system)
   (get-CurrentDrive-system system)
   (cond
-    [(string=? ComandoOrFolderOrSubfolder "..")
+    [(string=? Comando "..")
      (if (= 1(count-elements (string-split (get-currentPath-system system) "/")))
-     (get-currentPath-system system)   
-     (reverse (PathInverse (DividePath (get-currentPath-system system))  '() ))) ]
-    [(string=? ComandoOrFolderOrSubfolder "/")  (BackRoot(get-currentPath-system system))]
-    [(string? ComandoOrFolderOrSubfolder)  (string-append (get-currentPath-system system) ComandoOrFolderOrSubfolder "/")])
+      (get-currentPath-system system)
+      (string-join (PathInverse (cdr(reverse(string-split (get-currentPath-system system) "/"))) '() ) ""))]
+    [(string=? Comando "/")  (BackRoot(get-currentPath-system system)) ]
+    [(string? Comando)  (string-append (get-currentPath-system system) Comando "/")])                ;; falta asegurarse que la carpeta no se repite verificando con con current path
+  
   (get-Archivos/carpetas system)))
 
 
@@ -326,13 +362,16 @@
   (if (list? (member #\. (string->list Name)))
       "File" "Folder"))
 
-;;Crear la funcion encriptar FNEncryp
+;;Función Encryptar:
+(define (Encryptar listElement)
+  (cons (car listElement) (cons (list (car (cadr listElement)) (cadr (cadr listElement)) (plus-one(caddr (cadr listElement)))) (cdr (cdr listElement)))   ))      
+
 
 
 (define (MapEncryp Name listAC)
   (if (null? listAC) null
       (if  (or (and (string=?(ArchivoOrCarpeta Name) "Folder")  (string=?(ArchivoOrCarpeta (car (reverse (string-split (car (car listAC)) "/")))) "File"))      (and (string=?(ArchivoOrCarpeta Name) "File")  (string=?(ArchivoOrCarpeta (car (reverse (string-split (car (car listAC)) "/")))) "File")))
-           (cons (FNencryp (car listAC))(MapEncryp Name (cdr listAC)))
+           (cons (Encryptar (car listAC))(MapEncryp Name (cdr listAC)))
            (cons (car listAC)(MapEncryp Name (cdr listAC))))))
 
 
@@ -341,14 +380,13 @@
 
 
 ;;R20:
-
 ;;Crear la funcion encriptar FNDesEncryp
 
 
-(define (MapEncryp Name listAC)
+(define (MapDesEncryp Name listAC)
   (if (null? listAC) null
       (if  (or (and (string=?(ArchivoOrCarpeta Name) "Folder")  (string=?(ArchivoOrCarpeta (car (reverse (string-split (car (car listAC)) "/")))) "File"))      (and (string=?(ArchivoOrCarpeta Name) "File")  (string=?(ArchivoOrCarpeta (car (reverse (string-split (car (car listAC)) "/")))) "File")))
-           (cons (FNDeencryp (car listAC))(MapEncryp Name (cdr listAC)))
+           (cons (Encryptar (car listAC))(MapEncryp Name (cdr listAC)))
            (cons (car listAC)(MapEncryp Name (cdr listAC))))))
 
 
@@ -383,12 +421,14 @@
 (define S5 ((run S4 add-user) "user1"))
 (define S6 ((run S5 add-user) "user2"))
 (define S7 ((run S6 login) "user1"))
-(define S8 ((run S7 login) "user2"))
+(define S8 ((run S7 login) "user6"))
 (define S9 (run S8 logout))
 (define S10 ((run S9 login) "user2"))
 (define S11 ((run S10 switch-drive) #\K))
 (define S12 ((run S11 switch-drive) #\C))
-(define S13 ((run S12 cd) "folder1"))           ;;Error cuando se habla de carpeta se invoca con cd
-(define S14 ((run S13 cd2) "folder1"))
-(define S15 ((run S14 rd) "folder1"))
-(define S16 ((run S15 copy) "folder1" "D:/"))
+(define S13 ((run S12 cd) "folder1"))
+(define S14 ((run S13 cd) "folder2"))
+(define S15 ((run S14 cd) "folder2"))
+(define S16 ((run S15 cd) "folder3"))
+(define S17 ((run S16 cd2) "/"))
+
