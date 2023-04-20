@@ -40,20 +40,9 @@
           (RepiteDrv? Char (cdr listDrive) (+ 1 Contador))
           (RepiteDrv? Char (cdr listDrive) Contador ))))
 
-
-
-(define ((add-drive system) drive namedrive capacidad )  ;; es el drive (que es una lista con letra xnombre x capacidad) que se quiere agregar
+(define ((add-drive system) drive namedrive capacidad )  ;; es el drive (que es una lista con letra x nombre x capacidad) que se quiere agregar
  (if ( = (RepiteDrv? drive (get-Drives-system system) 0) 1 )
- (make-system                    
-  (get-Name-system system)
-  (get-Users-system system)
-  (get-Drives-system system)
-  (get-CurrentUser-system system)
-  (get-CurrentDrive-system system)
-  (get-currentPath-system system)
-  (get-Archivos/carpetas system)
-  )
- 
+   system
   (make-system                    
   (get-Name-system system)
   (get-Users-system system)
@@ -61,19 +50,16 @@
   (get-CurrentUser-system system)
   (get-CurrentDrive-system system)
   (get-currentPath-system system)
-  (get-Archivos/carpetas system)
-  )))
+  (cons (list (string drive #\: #\/) '() "" "" "")(get-Archivos/carpetas system))                                                ;; Para facilitar operatividad de R11 se propone crear un regiStro vacío sólo con la raiz en Archivos/Carpetas                                                            
+  ))) 
 
 
 ;;RF5 - add-users:Permite agregar un nuevo usuario
-;; Se crea función para evitar agregar UN uSER con el mismo nombre
-
-(define (existe?  listName  Name Acc)                        
+(define (existe?  listName  Name Acc)        ;; Se crea función para evitar agregar UN uSER con el mismo nombre                    
   (if (null? listName) Acc
       (if (string=? (car listName) Name)
           (existe? (cdr listName) Name (+ 1 Acc))
           (existe? (cdr listName) Name Acc))))
-
 
 (define ((add-user system) NewUser )
 (if (> (existe?  (get-Users-system system)  NewUser  0)  0) system
@@ -101,7 +87,7 @@
  system))
 
 
-;;;;RF7 - Función logout: permite cerrar la sesión de un usuario en el sistema.
+;;RF7 - Función logout: permite cerrar la sesión de un usuario en el sistema.
 (define (logout system)
  (make-system                    
  (get-Name-system system)
@@ -147,7 +133,6 @@
            (CarpetaDuplicada? Pathfolder (cdr listAC) Acc))
        ))
 
-
 (define ((cd system) Name)
    (if  (= (CarpetaDuplicada? (string-append (string (get-CurrentDrive-system system) #\: #\/) Name "/")  (get-Archivos/carpetas system) 0) 0)
    (make-system                    
@@ -175,11 +160,11 @@
       0
       (+ 1 (count-elements (cdr lst)))))
 
-(define (PathInverse list listFinal)                                         ;; Funcion que a la lista anterior le incluye los "/" pero los deja invertidos
-    (if (null? list) listFinal
-        (PathInverse (cdr list) (cons (car list)(cons "/" listFinal)))))
+(define (PathRight list )                                         ;; Funcion que a la lista anterior le incluye los "/" 
+    (if (null? list) null
+     (cons (car list) (cons "/" (PathRight (cdr list) )))))
 
-(define (BackRoot string)                                                    ;; Función que determina si es carpeta o archivo a partir del ultimo caracter de la ruta y los lleva a una list de string sin "/"
+(define (BackRoot string)                                           
    (string-append (car (string-split string "/")) "/" ))
 
 
@@ -194,7 +179,7 @@
     [(string=? Comando "..")
      (if (= 1(count-elements (string-split (get-currentPath-system system) "/")))
       (get-currentPath-system system)
-      (string-join (PathInverse (cdr(reverse(string-split (get-currentPath-system system) "/"))) '() ) ""))]
+      (string-join (PathRight (cdr(string-split (get-currentPath-system system) "/")) '() ) ""))]
     [(string=? Comando "/")  (BackRoot(get-currentPath-system system)) ]
     [(string? Comando)  (string-append (get-currentPath-system system) Comando "/")])                ;; falta asegurarse que la carpeta no se repite verificando con con current path
   
@@ -202,12 +187,8 @@
 
 
 ;;R11: add-file función que permite añadir un archivo en la ruta actual.
-(define (substring? str sub)                                                 ;; Funcion que permite saber si un string (sub) es parte de otro (str)
-  (cond ((null? sub) #t) 
-        ((string-prefix? sub str) #t) 
-        (else (substring? (substring str 1) sub)))) 
 
-;;Se define el constructor del files
+;;Se define el constructor "file"
 (define (file filename extension contenido . atributos)
   (list filename extension contenido atributos))
 
@@ -224,7 +205,6 @@
           (findReg (cdr listAC) CurrentPath (cons (car listAC)  listAcc))
           (findReg (cdr listAC) CurrentPath listAcc))))
           
-
 (define ((add-file system) listFile)
  (if (= (filterAC (get-Archivos/carpetas system) (string-append (get-currentPath-system system) (car listFile)) 0) 0)
  (make-system                    
@@ -234,109 +214,98 @@
   (get-CurrentUser-system system)
   (get-CurrentDrive-system system)
   (get-currentPath-system system)
-        ( cons         (cons       ( cons   (string-append (get-currentPath-system system) (car listFile))         listFile )       (cdr  (cdr   (findReg (get-Archivos/carpetas system) (get-currentPath-system system) '( ))  )) )      (get-Archivos/carpetas system)   ))
+     (cons   (cons (string-append (get-currentPath-system system) (car listFile))       (cons listFile      (cdr  (cdr   (car (findReg (get-Archivos/carpetas system) (get-currentPath-system system) '( )))   )  )  )  )       (get-Archivos/carpetas system)   ))
   
- (make-system                    
-  (get-Name-system system)
-  (get-Users-system system)
-  (get-Drives-system system)
-  (get-CurrentUser-system system)
-  (get-CurrentDrive-system system)
-  (get-currentPath-system system)
-  (get-Archivos/carpetas system))))
+  system))
   
 
 
-
-;;R12;
-
+;;R12
 
 
-;;R13: 
+
+;;R13: Elimina Carpeta
 ;;Filtra los registros en "Archivos/carpetas" cuyo path contenga el nombre de la carpeta y que tengan archivos
-(define (CarpetaVacia? ListAC NameCarpeta Acc)        ;; De manera que si Acc > 1 entonces la carpeta no esta vacía 
-(if (null? ListAC) Acc
-  (if (boolean=? (memq NameCarpeta (string-split (car(car ListAC)) "/")) false)
-      (CarpetaVacia? (cdr ListAC) NameCarpeta Acc)
-      (if (null? (caddr(car ListAC)))
-          (CarpetaVacia? (cdr ListAC) NameCarpeta Acc)         
-          (CarpetaVacia? (cdr ListAC) NameCarpeta (+1 Acc)))  
+(define (CarpetaVacia? listAC NameCarpeta listAcc)        ;; De manera que si Acc > 1 entonces la carpeta no esta vacía 
+(if (null? listAC) listAcc
+  (if (boolean=? (memq NameCarpeta (string-split (car(car listAC)) "/" )) false )      ;; se el nombre de la carpeta no está en el ptah arroja "false"
+      (CarpetaVacia? (cdr listAC) NameCarpeta listAcc)    
+      (if (null? (cadr(car listAC)))
+          (CarpetaVacia? (cdr listAC) NameCarpeta listAcc)         
+          (CarpetaVacia? (cdr listAC) NameCarpeta (cons (car listAC) listAcc)))  
        )))
 
 (define ((rd system) folder)
-  (if (>(CarpetaVacia? (get-Archivos/carpetas system) folder  0 )0)
+  (if (null? (CarpetaVacia? (get-Archivos/carpetas system) folder  '()) )
       system                                                                 ;; Falta borrar la carpeta
-      system
-  ))
+      (make-system                    
+       (get-Name-system system)
+       (get-Users-system system)
+       (get-Drives-system system)
+       (get-CurrentUser-system system)
+       (get-CurrentDrive-system system)
+       (get-currentPath-system system)
+       (remove (CarpetaVacia? (get-Archivos/carpetas system) folder  '()) (get-Archivos/carpetas system))
+   )))
 
         
-
-
 ;;R14: Copiar archivos y carpetas
-(define (DatosFile Namefile ListAC)                 ;; entrega la lista con los datos del archivo a copiar                                          
-    (if (null? ListAC) null
-            (if (list?(member Namefile (string-split (car(car ListAC)) "/")))
-            (car ListAC)
-            (DatosFile Namefile (cdr ListAC)))))
-                
-
-(define (DatosFolder Namefolder ListAC)               ;; entrega lists con los datos de la carpeta a copiar                                  
-    (if (null? ListAC) null
-            (if (list?(member Namefolder(string-split (car(car ListAC)) "/")))
-            (car ListAC)
-            (DatosFile Namefolder (cdr ListAC)))))
-        
-
-(define (FileOrFolder StringName)                     ;; entrega si un string es archivo o carpeta dependiendo si tiene extensión
-   (if (list? (member #\. (string->list StringName)))
-    "A" "C"))
-
-
-(define ((copy system)NameFileOrFolder PathDestino)
-  (if (string=?(FileOrFolder NameFileOrFolder) "A")
-    (make-system                    
-       (get-Name-system system)
-       (get-Users-system system)
-       (get-Drives-system system)
-       (get-CurrentUser-system system)
-       (get-CurrentDrive-system system)
-       (get-currentPath-system system)
-       (cons (list (string-append PathDestino NameFileOrFolder) (cadr(DatosFile NameFileOrFolder (get-Archivos/carpetas system))) (caddr(DatosFile NameFileOrFolder (get-Archivos/carpetas system))) (cadddr(DatosFile NameFileOrFolder (get-Archivos/carpetas system))) (car (cdr (cdr (cdr (cdr (DatosFile NameFileOrFolder (get-Archivos/carpetas system)))))))) (get-Archivos/carpetas system))
-       )
-    (make-system                    
-       (get-Name-system system)
-       (get-Users-system system)
-       (get-Drives-system system)
-       (get-CurrentUser-system system)
-       (get-CurrentDrive-system system)
-       (get-currentPath-system system)
-       (cons (list (string-append PathDestino NameFileOrFolder)(cadr(DatosFolder NameFileOrFolder (get-Archivos/carpetas system))) (caddr(DatosFolder NameFileOrFolder (get-Archivos/carpetas system))) (cadddr(DatosFolder NameFileOrFolder (get-Archivos/carpetas system))) (car (cdr (cdr (cdr (cdr (DatosFolder NameFileOrFolder (get-Archivos/carpetas system)))))))) (get-Archivos/carpetas system))
-             
-       )))
+(define (PathNewReg RegistroAC NameElement RootPath)    ;;Entrega la ruta de cada resgistro, cuando requiere copiarse
+   (cond (string-append RootPath (PathRight (member NameElement (string-split (car RegistroAC) "/")))) (cdr RegistroAC)))
+   
+(define (Copiar listAC NameElement RootPath)             ;;Genera una nueva lista que reemplaza a listAC con todos los registros copiados
+    (if (null? listAC) null
+        (if (null? (member NameElement (string-split (car( car listAC)))))
+            (cons (PathNewReg (car listAC) NameElement RootPath)   (cons (car listAC)  (Copiar cdr listAC))) 
+             (cons   (car listAC)  (Copiar cdr listAC)))))
 
 
 
+;;R15: Mueve archivos
+(define (Mover listAC NameElement RootPath)             ;;Genera una nueva lista que reemplaza a listAC con todos los registros copiados
+    (if (null? listAC) null
+        (if (null? (member NameElement (string-split (car( car listAC)))))
+            (cons (PathNewReg (car listAC) NameElement RootPath)   (cons (remove (car listAC)  (Copiar cdr listAC)) ))  ;;remueve el archivo cambiado de ruta
+             (cons   (car listAC)  (Copiar cdr listAC)))))
 
 
-  
-;;R15
 
-
-
-
-  
+;; Falta crear el nuevo systema
+ 
 ;;R16
-(define (replace lst old new)                            ;; permite reemplazar un elemento (old) por otro (new)
+(define (replace lst old new)                               ;; permite reemplazar un elemento (old) por otro (new)
   (map (lambda (x) (if (eq? x old) new x)) lst))
 
-;;(define (sublist? lst sublst)                            ;; permite determinar si un elemento es sublista de otro
-  ;;(cond
-    ;;((null? sublst) #t) 
-    ;;((null? lst) #f) 
-    ;;((equal? lst sublst) #t) 
-    ;;((not (pair? lst)) #f) 
-    ;;((sublist? (cdr lst) sublst)) 
-    ;;((sublist? (cdr lst) (cdr sublst))))) 
+
+(define (Subruta CurrentPath NewName Ruta)                  ;; Entrega un boolean asociado a si es ruta o no
+   (if (equal? (string-split (string-append CurrentPath NewName) "/") (reverse(member NewName (reverse (string-split Ruta "/")))))  true false))                                     ;; Define su una ruta es subruta 
+
+
+(define (CarpetaOrArchivo Name)
+  (if (list? (member #\. (string->list Name))) "Archivo" "Carpeta"))
+
+
+(define (RemCarpeta OldName NewName CurrentPath listAC)
+  (if (null? listAC) null
+      (if (Subruta CurrentPath NewName (car (car listAC)))
+           (cons (cons (string-join (PathRight (replace (string-split (car (car listAC))) OldName NewName)))  (cdr (car LisAC)))    (RemCarpeta OldName NewName CurrentPath (cdr listAC)))               ;;(define (PathRight list )           ;; validez del nombre (substring? str sub)  
+           (cons (car LisAC)    (RemCarpeta OldName NewName CurrentPath (cdr listAC)))   )))                                                                                                                                                
+
+
+
+
+
+
+
+
+(define (ReemplazoEnRegAC OldName NewName CurrentPath RegAC)
+  (
+
+   )
+  
+  
+  
+
 
 ;;(define (ActalizarAC listRegistro  OldName NewName)
  ;; (if (list? (member NewName (string-split (car listRegistro)"/")))
@@ -351,6 +320,18 @@
 
 
 
+  
+;;R17:
+(define (DepliegueList lista)                                            ;;función que despliega listas
+    (define my-list lista)
+    (for-each (lambda (x) (display x) (newline)) my-list))
+
+(define (OrdenaList lista)
+    (sort lista string<?))
+
+
+  
+
 ;;R18: Formatear un disco y renombrarlo
 (define (FiltrarPorDrive NameDrive listAC)      ;;Permite filtrar los registros que tienen de raiz el drive buscado
   (if (null? listAC) null
@@ -362,8 +343,7 @@
 (define (Move sublist list listRef)             ;; Permite mover una sublista de una lista
   (if (null? sublist) listRef
       (if (list? (member (car sublist) list))
-          (Move (cdr sublist) list (remove (car sublist) listRef))
-          
+          (Move (cdr sublist) list (remove (car sublist) listRef)) 
           (Move (cdr sublist) list listRef) )))
 
 (define (MapRenombrar NameDrive NewName listDrives)   ;; Es un map que renombra el disco formateado
@@ -372,7 +352,6 @@
                      (cons(cons(car(car listDrives)) (cons NewName (cdr(cdr(car listDrives))))) (MapRenombrar NameDrive NewName (cdr listDrives)))
                      (cons (car listDrives)(MapRenombrar NameDrive NewName (cdr listDrives))))))
    
-
 (define ((Format System) NameDrive NewName)
   (Move (FiltrarPorDrive NameDrive (get-Archivos/carpetas system)) (get-Archivos/carpetas system) (get-Archivos/carpetas system)) ;;Incluir la construcción del sistema
   (MapRenombrar NameDrive NewName (get-Drives-system system) ))
@@ -388,7 +367,6 @@
   (cons (car listElement) (cons (list (car (cadr listElement)) (cadr (cadr listElement)) (plus-one(caddr (cadr listElement)))) (cdr (cdr listElement)))   ))      
 
 
-
 (define (MapEncryp Name listAC)
   (if (null? listAC) null
       (if  (or (and (string=?(ArchivoOrCarpeta Name) "Folder")  (string=?(ArchivoOrCarpeta (car (reverse (string-split (car (car listAC)) "/")))) "File"))      (and (string=?(ArchivoOrCarpeta Name) "File")  (string=?(ArchivoOrCarpeta (car (reverse (string-split (car (car listAC)) "/")))) "File")))
@@ -397,20 +375,13 @@
 
 
 
-
-
-
 ;;R20:
 ;;Crear la funcion encriptar FNDesEncryp
-
-
 (define (MapDesEncryp Name listAC)
   (if (null? listAC) null
       (if  (or (and (string=?(ArchivoOrCarpeta Name) "Folder")  (string=?(ArchivoOrCarpeta (car (reverse (string-split (car (car listAC)) "/")))) "File"))      (and (string=?(ArchivoOrCarpeta Name) "File")  (string=?(ArchivoOrCarpeta (car (reverse (string-split (car (car listAC)) "/")))) "File")))
            (cons (Encryptar (car listAC))(MapEncryp Name (cdr listAC)))
            (cons (car listAC)(MapEncryp Name (cdr listAC))))))
-
-
 
 
 
