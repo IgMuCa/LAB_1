@@ -215,15 +215,61 @@
   (get-CurrentDrive-system system)
   (get-currentPath-system system)
      (cons   (cons (string-append (get-currentPath-system system) (car listFile))       (cons listFile      (cdr  (cdr   (car (findReg (get-Archivos/carpetas system) (get-currentPath-system system) '( )))   )  )  )  )       (get-Archivos/carpetas system)   ))
-  
   system))
   
 
 
-;;R12
+;;R12 Funciones para eliminar un archivo o varios archivos en base a un patrón determinado.
+(define (FolderInPath Path)
+      (car (reverse (string-split Path "/"))))
+  
+(define (getExtension Name)
+      (cadr(string-split Name ".")))
+
+(define (getLetter Command)
+      (car (string-split (car(string-split Command ".")) "*")))
+
+(define (FirstLetter str)
+   (string(car(string->list str))))
 
 
 
+(define (Delfile CurrentPath Name listAC list)                            ;; Crea nueva lista con los elemnetos seleccionados eliminados los que se deben incluir en la actualizacion del sistema   
+  (if (null? listAC) list
+      (if (string=?(string-append CurrentPath Name) (car (car listAC)) )
+        (Delfile CurrentPath Name (cdr listAC) (remove (car listAC) list))
+        (Delfile CurrentPath Name (cdr listAC) list)) ))
+
+
+(define (DelFileExt CurrentPath ComdExten listAC list)                    ;;Crea nueva lista con los elemnetos seleccionados eliminados los que se deben incluir en la actualizacion del sistema 
+  (if (null? listAC) list
+      (if  (list? (member (FolderInPath CurrentPath) (string-split (car (car listAC)) "/")))
+           (if  (string=? (getExtension(cadr(member (FolderInPath CurrentPath) (string-split (car (car listAC)) "/"))))    (getExtension ComdExten))
+           (DelFileExt CurrentPath ComdExten (cdr listAC)  (remove (car listAC) list)) 
+           (DelFileExt CurrentPath ComdExten (cdr listAC)  list))
+      (DelFileExt CurrentPath ComdExten (cdr listAC)  list))))
+
+
+(define (DelFileLetterExt CurrentPath Comand listAC list)                    ;;Crea nueva lista con los elemnetos seleccionados eliminados los que se deben incluir en la actualizacion del sistema 
+  (if (null? listAC) list
+      (if  (list? (member (FolderInPath CurrentPath) (string-split (car (car listAC)) "/")))
+           (if  (and     (string=? (getExtension(cadr(member (FolderInPath CurrentPath) (string-split (car (car listAC)) "/")))) (getExtension Comand))  (string=? (getLetter Comand) (FirstLetter (car (car listAC))) ))
+           (DelFileLetterExt CurrentPath Comand (cdr listAC)  (remove (car listAC) list)) 
+           (DelFileLetterExt CurrentPath Comand (cdr listAC)  list))
+      (DelFileLetterExt CurrentPath Comand (cdr listAC)  list))))
+
+
+(define (Delall CurrentPath Comand listAC list)                    ;;Crea nueva lista con los elemnetos seleccionados eliminados los que se deben incluir en la actualizacion del sistema  
+  (if (null? listAC) list
+      (if  (list? (member (FolderInPath CurrentPath) (string-split (car (car listAC)) "/")))
+           (if   (list? (member #\. (string->list (cadr(member (FolderInPath CurrentPath) (string-split (car (car listAC)) "/"))))))        
+           (Delall CurrentPath Comand (cdr listAC)  (remove (car listAC) list)) 
+           (Delall CurrentPath Comand (cdr listAC)  list))
+      (Delall CurrentPath Comand (cdr listAC)  list))))
+
+
+
+       
 ;;R13: Elimina Carpeta
 ;;Filtra los registros en "Archivos/carpetas" cuyo path contenga el nombre de la carpeta y que tengan archivos
 (define (CarpetaVacia? listAC NameCarpeta listAcc)        ;; De manera que si Acc > 1 entonces la carpeta no esta vacía 
@@ -232,8 +278,7 @@
       (CarpetaVacia? (cdr listAC) NameCarpeta listAcc)    
       (if (null? (cadr(car listAC)))
           (CarpetaVacia? (cdr listAC) NameCarpeta listAcc)         
-          (CarpetaVacia? (cdr listAC) NameCarpeta (cons (car listAC) listAcc)))  
-       )))
+          (CarpetaVacia? (cdr listAC) NameCarpeta (cons (car listAC) listAcc)))        )))
 
 (define ((rd system) folder)
   (if (null? (CarpetaVacia? (get-Archivos/carpetas system) folder  '()) )
@@ -245,8 +290,7 @@
        (get-CurrentUser-system system)
        (get-CurrentDrive-system system)
        (get-currentPath-system system)
-       (remove (CarpetaVacia? (get-Archivos/carpetas system) folder  '()) (get-Archivos/carpetas system))
-   )))
+       (remove (CarpetaVacia? (get-Archivos/carpetas system) folder  '()) (get-Archivos/carpetas system))        )))
 
         
 ;;R14: Copiar archivos y carpetas
@@ -288,38 +332,23 @@
 (define (RemCarpeta OldName NewName CurrentPath listAC)
   (if (null? listAC) null
       (if (Subruta CurrentPath NewName (car (car listAC)))
-           (cons (cons (string-join (PathRight (replace (string-split (car (car listAC))) OldName NewName)))  (cdr (car LisAC)))    (RemCarpeta OldName NewName CurrentPath (cdr listAC)))               ;;(define (PathRight list )           ;; validez del nombre (substring? str sub)  
-           (cons (car LisAC)    (RemCarpeta OldName NewName CurrentPath (cdr listAC)))   )))                                                                                                                                                
+           (cons (cons (string-join (PathRight (replace (string-split (car (car listAC))) OldName NewName)))  (cdr (car listAC)))    (RemCarpeta OldName NewName CurrentPath (cdr listAC)))               ;;(define (PathRight list )           ;; validez del nombre (substring? str sub)  
+           (cons (car listAC)    (RemCarpeta OldName NewName CurrentPath (cdr listAC)))   )))                                                                                                                                                
 
 
+(define (RemArchivo OldName NewName CurrentPath listAC)
+  (if (null? listAC) null
+      (if (Subruta CurrentPath NewName (car (car listAC)))
+           (cons      (cons    (string-join (PathRight (replace (string-split (car (car listAC))) OldName  NewName )))   (cons (cons (string-join (PathRight (replace (string-split (car (car listAC))) OldName  NewName ))) (cdr (cadr (car listAC))))      (cdr (cdr (car listAC)))))         (RemArchivo OldName NewName CurrentPath (cdr listAC)))               ;;(define (PathRight list )           ;; validez del nombre (substring? str sub)  
+           (cons (car listAC)    (RemArchivo OldName NewName CurrentPath (cdr listAC)))   )))                                                                                                                                                
 
 
-
-
-
-
-(define (ReemplazoEnRegAC OldName NewName CurrentPath RegAC)
-  (
-
-   )
+(define ((ren system) OldName NewName )
+  (if   (string=? (CarpetaOrArchivo NewName) "Carpeta")
+        (RemCarpeta OldName NewName  (get-currentPath-system system) (get-Archivos/carpetas system))             ;;insertar constructor de sitema
+        (RemArchivo OldName NewName  (get-currentPath-system system) (get-Archivos/carpetas system))))
   
   
-  
-
-
-;;(define (ActalizarAC listRegistro  OldName NewName)
- ;; (if (list? (member NewName (string-split (car listRegistro)"/")))
-   ;;   (replace (string-split (car listRegistro)"/") OldName NewName) 
-;;        (if (string=?(FileOrFolder OldName) "A")
-  ;;         (replace (cadr listRegistro) OldName NewName)
-           
-    ;;  )))
-
-;;(define ((ren system) NewName)
-;;(map (lambda (x  OldName NewName) (ActalizarAC x OldName NewName)) (get-Archivos/carpetas system)))
-
-
-
   
 ;;R17:
 (define (DepliegueList lista)                                            ;;función que despliega listas
