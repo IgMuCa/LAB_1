@@ -234,63 +234,88 @@
 
 
 ;;R12 Funciones para eliminar un archivo o varios archivos en base a un patrón determinado.
-(define (FolderInPath Path)                                               ;;Retorna la ultima carpeta de la ruta de trabajo
+(define (LastInPath Path)                                                 ;;Retorna la ultima carpeta o archivo de la ruta de trabajo
       (car (reverse (string-split Path "/"))))
-  
-(define (getExtension Name)                                               ;;Retorna la extensión de un archivo
-      (cadr(string-split Name ".")))
 
+(define (ShortPath Path)                                                  ;;Retorna la ruta de trabajo sin el ultimo archivo o carpeta
+      (reverse (cdr (reverse(string-split Path "/")))))
+ 
+(define (getExtension Name)                                               ;;Retorna la extensión de un archivo
+   (if (list? (member #\.(string->list Name)))  
+       (cadr(string-split Name "."))
+        false))
+  
 (define (getLetter Command)                                               ;;Separa la letra del *, con el objetivo de buscar archivos
       (car (string-split (car(string-split Command ".")) "*")))
 
 (define (FirstLetter str)                                                 ;;Retorna la primera letra de un string
    (string(car(string->list str))))
 
-(define (Delfile CurrentPath Name listAC list)                            ;;(Borra archivo) Crea nueva lista con los elementos seleccionados (name) eliminados, los que se deben incluir en la actualizacion del sistema Y EN EL TRASH  
+(define (DelFile CurrentPath Name listAC list)                            ;;(Borra archivo) Crea nueva lista con los elementos seleccionados (name) eliminados, los que se deben incluir en la actualizacion del sistema Y EN EL TRASH  
   (if (null? listAC) list                                                 ;; list al inicio es igual a listAC
       (if (string=?(string-append CurrentPath Name) (car (car listAC)) )
-        (Delfile CurrentPath Name (cdr listAC) (remove (car listAC) list))
-        (Delfile CurrentPath Name (cdr listAC) list)) ))
+        (DelFile CurrentPath Name (cdr listAC) (remove (car listAC) list))
+        (DelFile CurrentPath Name (cdr listAC) list)) ))
 
-(define (DelFileExt CurrentPath ComdExten listAC list)                    ;;(Borra archivos con la extensión requerida) Crea nueva lista con los elementos seleccionados eliminados los que se deben incluir en la actualizacion del sistema Y EN EL TRASH
+
+(define (DelFileExt CurrentPath ComdExten listAC list)                    ;;(Borra archivos con la extensión requerida. Creaando nueva lista con los elementos seleccionados eliminados los que se deben incluir en la actualizacion del sistema Y EN EL TRASH
   (if (null? listAC) list
-      (if  (list? (member (FolderInPath CurrentPath) (string-split (car (car listAC)) "/")))
-           (if  (string=? (getExtension(cadr(member (FolderInPath CurrentPath) (string-split (car (car listAC)) "/"))))    (getExtension ComdExten))
+      (if(equal? (string-split CurrentPath "/") (ShortPath (car (car listAC))))
+         (if  (string=? (getExtension (LastInPath (car (car listAC)))) (getExtension ComdExten))
            (DelFileExt CurrentPath ComdExten (cdr listAC)  (remove (car listAC) list)) 
            (DelFileExt CurrentPath ComdExten (cdr listAC)  list))
       (DelFileExt CurrentPath ComdExten (cdr listAC)  list))))
 
+
 (define (DelFileLetterExt CurrentPath Comand listAC list)                 ;;(Borra archivos con la letra de inicio y extensión requerida) Crea nueva lista con los elementos seleccionados eliminados los que se deben incluir en la actualizacion del sistema Y EN EL TRASH
   (if (null? listAC) list
-      (if  (list? (member (FolderInPath CurrentPath) (string-split (car (car listAC)) "/")))
-           (if  (and   (string=? (getExtension(cadr(member (FolderInPath CurrentPath) (string-split (car (car listAC)) "/")))) (getExtension Comand))  (string=? (getLetter Comand) (FirstLetter (cadr(member (FolderInPath CurrentPath) (string-split (car (car listAC)) "/")))) ))
-           (DelFileLetterExt CurrentPath Comand (cdr listAC)  (remove (car listAC) list)) 
-           (DelFileLetterExt CurrentPath Comand (cdr listAC)  list))
-      (DelFileLetterExt CurrentPath Comand (cdr listAC)  list))))
+      (if  (equal? (string-split CurrentPath "/") (ShortPath (car (car listAC))))
+         (if (and (string=? (getExtension (LastInPath (car (car listAC)))) (getExtension Comand)) (string=? (FirstLetter Comand) (FirstLetter (LastInPath (car (car listAC)))) ))
+           (DelFileLetterExt CurrentPath Comand (cdr listAC) (remove (car listAC) list)) 
+           (DelFileLetterExt CurrentPath Comand (cdr listAC) list))
+      (DelFileExt CurrentPath Comand (cdr listAC)  list))))
 
-(define (Delall CurrentPath Comand listAC list)                            ;;Crea nueva lista con todos los archivos  eliminados los que se deben incluir en la actualizacion del sistema Y EN EL TRASH
+
+(define (DelAllFile CurrentPath Comand listAC list)                            ;;Crea nueva lista con todos los archivos  eliminados los que se deben incluir en la actualizacion del sistema Y EN EL TRASH
   (if (null? listAC) list
-      (if  (list? (member (FolderInPath CurrentPath) (string-split (car (car listAC)) "/")))
-           (if   (list? (member #\. (string->list (cadr(member (FolderInPath CurrentPath) (string-split (car (car listAC)) "/"))))))        
-           (Delall CurrentPath Comand (cdr listAC)  (remove (car listAC) list)) 
-           (Delall CurrentPath Comand (cdr listAC)  list))
-      (Delall CurrentPath Comand (cdr listAC)  list))))
+       (if (string=? (string-split CurrentPath "/") (ShortPath (car (car listAC))))
+           (if  (string=? (getExtension (LastInPath (car (car listAC)))))       
+           (DelAllFile CurrentPath Comand (cdr listAC)  (remove (car listAC) list)) 
+           (DelAllFile CurrentPath Comand (cdr listAC)  list))
+      (DelAllFile CurrentPath Comand (cdr listAC)  list))))
+
+  
+;;Se crea función que permite operar los comandos
+(define ((del system) Comand)
+  (make-system                    
+     (get-Name-system system)
+     (get-Users-system system)
+     (get-Drives-system system)
+     (get-CurrentUser-system system)
+     (get-CurrentDrive-system system)
+     (get-currentPath-system system)
+     (cond
+      [(string=? Comand "*..*") (DelAllFile (get-currentPath-system system) Comand  (get-Archivos/carpetas system) (get-Archivos/carpetas system))]
+      [(and (= (contar #\* (string->list Comand)  0) 1)  (= (contar #\. (string->list Comand)  0) 1)  (char=? #\* (car (string->list Comand))))    (DelFileExt (get-currentPath-system system) Comand (get-Archivos/carpetas system) (get-Archivos/carpetas system)) ]
+      [(and (= (contar #\* (string->list Comand)  0) 1)  (= (contar #\. (string->list Comand)  0) 1))    (DelFileLetterExt (get-currentPath-system system) Comand (get-Archivos/carpetas system) (get-Archivos/carpetas system)) ]                                                                                                                                          
+      [(= (contar #\. (string->list Comand)  0) 1)    (DelFile (get-currentPath-system system) Comand (get-Archivos/carpetas system) (get-Archivos/carpetas system)) ]            
+      )))
+
+;;Funcion auxilar para linkear los comandos
+ (define (contar x lista  Acc)
+   (if (null? lista) Acc
+       (if (char=? x (car lista))
+           (contar x (cdr lista) ( + 1 Acc) )
+           (contar x (cdr lista) Acc)
+           )))
 
 
 
-
-
-
-
-
-
-
-
-       
+  
 ;;R13: Elimina Carpeta
  (define (CarpetaVacia? CurrentPath NameCarpeta listAC listAcc)                                      ;; Filtra los registros en "Archivos/carpetas" cuyo path contenga el nombre de la carpeta y que tengan archivos de manera que si Acc > 1 entonces la carpeta no esta vacía 
   (if (null? listAC) listAcc
-    (if (subset? (string-append CurrentPath NameCarpeta "/") (car (car listAC)))                     ;; Si el nombre de la carpeta no está en el path, arroja "false"
+    (if (subset? (string-split (string-append CurrentPath NameCarpeta)"/") (string-split(car (car listAC)) "/"))                      ;; Si el nombre de la carpeta no está en el path, arroja "false"
       (CarpetaVacia? (cdr listAC) NameCarpeta (cons (car listAC) listAcc))
       (CarpetaVacia? (cdr listAC) NameCarpeta listAcc)  )))
                                                                                         
@@ -310,51 +335,62 @@
 
 
 ;;R14: Copiar archivos y carpetas
-(define (RutaValida? listAC NameElement RootPath  Acc)                                      ;; Determina si hay duplicidad de nombres, en la nueva ruta
-   (if (subset? (string-split (string-append RootPath NameElement) "/") (string-split (car (car listAC))) "/")
-       (RutaValida? (cdr listAC) NameElement RootPath (+ 1 Acc))
-       (RutaValida? (cdr listAC) NameElement RootPath Acc)))
+(define (RutaValida? listAC Name Pathfinal Acc)                                                     ;; Determina si hay duplicidad de nombres, en la nueva ruta
+  (if (null? listAC) Acc
+   (if (equal? (string-split (string-append Pathfinal Name) "/") (string-split (car (car listAC)) "/"))
+       (RutaValida? (cdr listAC) Name Pathfinal (+ 1 Acc))
+       (RutaValida? (cdr listAC) Name Pathfinal Acc))))
 
-(define (NewReg RegistroAC NameElement RootPath)                                            ;; Entrega cada resgistro de listAC modificado, para copiarl, cuando se requiera
- (if (string=?  (ArchivoOrCarpeta NameElement) "Folder")
-    (cond (string-append RootPath (PathRight (member NameElement (string-split (car RegistroAC) "/"))) ) (cdr RegistroAC))
-    (cond (string-append RootPath NameElement) (cdr RegistroAC))))
 
-(define (Copiar listAC NameElement CurrentPath RootPath listAcc)                                     ;;Genera una nueva lista que reemplaza a listAC con todos los registros copiados (IMPORTANTE, listAcc ES UNA LOPIA DE listAC AL INICIO.
+(define (Registrar Xeg NameFileOrFolder Pathfinal)
+   (cons (string-append  Pathfinal (string-join (PathRight (member NameFileOrFolder (string-split (car Xeg) "/"))))) (cdr Xeg)))
+
+
+(define (Copiar listAC Name CurrentPath Pathfinal listAcc)                                     ;;Genera una nueva lista que reemplaza a listAC con todos los registros copiados (IMPORTANTE, listAcc ES UNA LOPIA DE listAC AL INICIO.
   (if (null? listAC) listAcc
-      (if (and ( = (RutaValida? listAC NameElement RootPath  0) 0 ) (subset? (string-split (string-append CurrentPath NameElement) "/") (string-split (car (car listAC))) "/"))  ;;Es valido copiarlo
-            (Copiar (cdr listAC) NameElement  CurrentPath  RootPath     (cons (NewReg (car listAC)  NameElement RootPath)   listAcc ) )
-            (Copiar (cdr listAC) NameElement  CurrentPath  RootPath       listAcc ))))
-         
-(define ((copy system) Name Path) 
+      (if (subset? (string-split (string-append CurrentPath Name) "/") (string-split (car (car listAC)) "/"))  ;;Es valido copiarlo
+            (Copiar (cdr listAC) Name  CurrentPath  Pathfinal   (cons (Registrar (car listAC) Name Pathfinal) listAcc ) )               ;;En este caso listAcc parte siendo igual a listAC
+      (Copiar (cdr listAC) Name  CurrentPath  Pathfinal   listAcc ))))
+
+
+(define ((copy system) Name Pathfinal) 
  (make-system                    
        (get-Name-system system)
        (get-Users-system system)
        (get-Drives-system system)
        (get-CurrentUser-system system)
+       
        (get-CurrentDrive-system system)
        (get-currentPath-system system)
-       (Copiar  (get-Archivos/carpetas system)   Name   (get-currentPath-system system)   Path   (get-Archivos/carpetas system) )))
+       (if ( = (RutaValida? (get-Archivos/carpetas system) Name Pathfinal 0)0)
+           (Copiar  (get-Archivos/carpetas system)   Name   (get-currentPath-system system)   Pathfinal   (get-Archivos/carpetas system))
+       (get-currentPath-system system))
+       ))
 
 
 
 
 ;;R15: Mueve archivos y carpetas
-(define (Mover listAC NameElement CurrentPath RootPath listAcc)                                     ;;Genera una nueva lista que reemplaza a listAC con todos los registros copiados (IMPORTANTE, listAcc ES UNA LOPIA DE listAC AL INICIO.
+(define (Mover listAC Name CurrentPath Pathfinal listAcc)                                     ;;Genera una nueva lista que reemplaza a listAC con todos los registros copiados (IMPORTANTE, listAcc ES UNA LOPIA DE listAC AL INICIO.
   (if (null? listAC) listAcc
-      (if (and ( = (RutaValida? listAC NameElement RootPath  0) 0 ) (subset? (string-split (string-append CurrentPath NameElement) "/") (string-split (car (car listAC))) "/"))  ;;Es valido copiarlo
-            (Mover (cdr listAC) NameElement  CurrentPath  RootPath   (cons (NewReg (car listAC)  NameElement RootPath) (remove (car listAC) listAcc )) )
-            (Mover (cdr listAC) NameElement  CurrentPath  RootPath       listAcc ))))
-         
-(define ((move system) Name Path) 
+      (if (subset? (string-split (string-append CurrentPath Name) "/") (string-split (car (car listAC)) "/"))  ;;Es valido copiarlo
+            (Mover (cdr listAC) Name  CurrentPath  Pathfinal   (cons (Registrar (car listAC) Name Pathfinal) (remove (car listAC)  listAcc)))                ;;En este caso listAcc parte siendo igual a listAC
+            (Mover (cdr listAC) Name  CurrentPath  Pathfinal   listAcc ))))
+
+
+(define ((move system) Name Pathfinal) 
  (make-system                    
        (get-Name-system system)
        (get-Users-system system)
        (get-Drives-system system)
        (get-CurrentUser-system system)
+       
        (get-CurrentDrive-system system)
        (get-currentPath-system system)
-       (Mover  (get-Archivos/carpetas system)     Name    (get-currentPath-system system)  Path  (get-Archivos/carpetas system) )))
+       (if ( = (RutaValida? (get-Archivos/carpetas system) Name Pathfinal 0)0)
+           (Mover  (get-Archivos/carpetas system)   Name   (get-currentPath-system system)   Pathfinal   (get-Archivos/carpetas system))
+       (get-currentPath-system system))
+       ))
 
 
 
@@ -378,7 +414,7 @@
            (cons (car listAC)    (RemCarpeta OldName NewName CurrentPath (cdr listAC)))   )))                                                                                                                                                
 
 
-(define (RemArchivo OldName NewName CurrentPath listAC)
+(define (RemArchivo OldName NewName CurrentPath listAC)     ;; Renombra considerando si es Archivo
   (if (null? listAC) null
       (if (Subruta CurrentPath NewName (car (car listAC)))
            (cons      (cons    (string-join (PathRight (replace (string-split (car (car listAC))) OldName  NewName )))   (cons (cons (string-join (PathRight (replace (string-split (car (car listAC))) OldName  NewName ))) (cdr (cadr (car listAC))))      (cdr (cdr (car listAC)))))         (RemArchivo OldName NewName CurrentPath (cdr listAC)))               ;;(define (PathRight list )           ;; validez del nombre (substring? str sub)  
@@ -511,4 +547,19 @@
 (define S32 ((run S30 add-file) (file "foo1.txt" "txt" "hello world 1")))
 (define S33 ((run S32 add-file) (file "foo2.txt" "txt" "hello world 2")))
 (define S34 ((run S33 add-file) (file "foo3.docx" "docx" "hello world 3")))
-(define S35 ((run S34 add-file) (file "goo4.docx" "docx" "hello world 4" "h" "r"))) 
+(define S35 ((run S34 add-file) (file "goo4.docx" "docx" "hello world 4" "h" "r")))
+(define S36 ((run S35 del) "*.txt"))
+(define S37 ((run S36 del) "f*.docx"))
+(define S38 ((run S37 del) "goo4.docx"))
+(define S39 ((run S38 cd2) ".."))
+(define S46 ((run S35 copy) "foo1.txt" "C:/folder3/"))
+(define S47 ((run S46 cd2) ".."))
+(define S48 ((run S47 copy) "folder1" "D:/"))
+(define S49 ((run S48 switch-drive) #\C))
+(define S50 ((run S49 copy) "folder1" "D:/"))
+(define S51 ((run S50 move) "folder3" "D:/"))
+(define S52 ((run S51 move) "foo3.docx" "d:/folder3/"))
+(define S53 ((run S52 switch-drive) #\D))
+(define S54 ((run S53 move) "foo3.docx" "D:/folder3/"))
+;;(define S55 ((run S54 ren) "foo1.txt" "newFoo1.txt"))
+(define S56 ((run S54 format) #\D "newD"))
